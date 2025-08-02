@@ -1,0 +1,55 @@
+parameters:
+  environment: test
+  environmentDisplayName: Test
+  TerraformArguments: ''
+  TerraformEnvVariables:
+
+stages:
+- stage: Terraform_${{ parameters.environment }}
+  displayName: Terraform ${{ parameters.environmentDisplayName }}
+  pool:
+    vmImage: ubuntu-latest
+  jobs:
+
+  - job: Terraform
+    displayName: Terraform
+    # Avoid concurrent Terraform runs on PRs, which would result in failures due to exclusive lock on remote state file.
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), variables['RUN_FLAG_TERRAFORM']))
+    steps:
+    - checkout: self
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: 'latest'
+    - task: TerraformTaskV4@4
+      displayName: Initialize Terraform
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/iac'
+        backendServiceArm: 'spn-dev-demo'
+        backendAzureRmResourceGroupName: 'rg-tf-subbu-demo'
+        backendAzureRmStorageAccountName: 'stdevsubbutfdemo'
+        backendAzureRmContainerName: 'tfstate'
+        # backendAzureRmKey: '${{ parameters.environment }}-${{ parameters.reponame }}-state.tfstate'
+        backendAzureRmKey: 'dev-state.tfstate'
+
+    - task: TerraformTaskV4@4
+      name: terraformPlan
+      displayName: Create Terraform Plan
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/iac'
+        commandOptions: '-out main.tfplan'
+        environmentServiceNameAzureRM: 'spn-dev-demo'
+
+    # Only runs if the 'terraformPlan' task has detected changes the in state. 
+    - task: TerraformTaskV4@4
+      displayName: Apply Terraform Plan
+      condition: and(succeeded(), eq(variables['terraformPlan.changesPresent'], 'true'))
+      inputs:
+        provider: 'azurerm'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/iac'
+        command: 'apply'
+        commandOptions: 'main.tfplan'
+        environmentServiceNameAzureRM: 'spn-dev-demo'  

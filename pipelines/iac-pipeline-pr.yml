@@ -1,0 +1,25 @@
+pr:
+  branches:
+    include:
+    - main
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - main
+
+variables:
+- group: subbu-demo-code-pipelines
+
+stages:
+- template: terraform-stages-template.yml
+  parameters:
+    environment: dev
+    environmentDisplayName: dev
+    reponame: subbu-demo-code
+    # Pass variables as environment variables.
+    # Terraform recognizes TF_VAR prefixed environment variables.
+    TerraformEnvVariables:
+      TF_VAR_department: engineering
