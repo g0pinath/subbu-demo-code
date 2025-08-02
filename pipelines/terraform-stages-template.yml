@@ -14,7 +14,7 @@ stages:
   - job: Terraform
     displayName: Terraform
     # Avoid concurrent Terraform runs on PRs, which would result in failures due to exclusive lock on remote state file.
-    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), variables['RUN_FLAG_TERRAFORM']))
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), variables['RUN_FLAG_TERRAFORM']))
     steps:
     - checkout: self
     - task: TerraformInstaller@0
